@@ -43,7 +43,7 @@ def Maple_Spec(guild_name,server):
             levels.append(int(guild_member_level[-3:]))
             jobs.append(guild_member_job[:10])
             # print(guild_member_job, guild_member_level)
-            return levels,jobs
+            return levels,jobs,numberOfMember
         except IndexError:
             break
 

@@ -1,7 +1,8 @@
 import sys
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from PyQt5.QtWidgets import *
-
+import pandas as pd
 
 def Get_GuildIndex(guilds, server):
     for i in range(len(guilds)):
@@ -24,7 +25,8 @@ class MyApp(QWidget):
     jobs = []
     numberOfMembers = 0
 
-    def Maple_Spec(guild_name, server):
+    def Maple_Spec(self, guild_name, server):
+
 
         driver = webdriver.Chrome("chromedriver")
         driver.get("https://maple.gg/")
@@ -39,10 +41,10 @@ class MyApp(QWidget):
         index = Get_GuildIndex(guilds, server)
         guilds[index].click()
         driver.implicitly_wait(5)
-        MyApp.numberOfMember = int(driver.find_elements_by_css_selector("div.col-lg-25 span")[3].text[-4:-1])
+        MyApp.numberOfMembers = int(driver.find_elements_by_css_selector("div.col-lg-25 span")[3].text[-4:-1])
         guild_member = driver.find_elements_by_css_selector("div.col-lg-3")
 
-        for i in range(MyApp.numberOfMember):
+        for i in range(MyApp.numberOfMembers):
             try:
                 guild_member_name = guild_member[i].find_element_by_css_selector("div.mb-2 a.font-size-14")
                 guild_member_info = guild_member[i].find_element_by_css_selector(
@@ -55,10 +57,51 @@ class MyApp(QWidget):
                 guild_member_level = guild_member_info[1]
                 MyApp.levels.append(int(guild_member_level[-3:]))
                 MyApp.jobs.append(guild_member_job[:10])
-                # print(guild_member_job, guild_member_level)
-                # return MyApp.levels, MyApp.jobs
+                #print(guild_member_job, guild_member_level)
+                # return levels, jobs, numberOfMember
             except IndexError:
                 break
+        for i in range(len(MyApp.members)):
+            try:
+                search_box = driver.find_element_by_name("q")
+
+                search_box.send_keys(MyApp.members[i])
+
+                search_button = driver.find_element_by_css_selector("i.fa-search")
+                search_button.click()
+                driver.implicitly_wait(1)
+
+                member_button = driver.find_elements_by_css_selector("div.search-result__item")[0]
+                member_button.click()
+
+                dojang = int(driver.find_elements_by_css_selector("h1.user-summary-floor")[0].text[-4:-2])
+                print(i, MyApp.members[i], dojang)
+                MyApp.dojangs.append(dojang)
+
+
+            except IndexError:
+                try:
+                    dojang = int(driver.find_elements_by_css_selector("h1.user-summary-floor")[0].text[-4:-2])
+                    print(i, MyApp.members[i], dojang)
+                    MyApp.dojangs.append(dojang)
+
+
+                except IndexError:
+                    try:
+                        dojang = int(driver.find_element_by_css_selector("div.old-dojang").text[-3:-1])
+                        print(i, MyApp.members[i], dojang)
+                        MyApp.dojangs.append(dojang)
+
+
+                    except NoSuchElementException:
+                        dojang = 0
+                        print(i, MyApp.members[i], dojang)
+                        MyApp.dojangs.append(dojang)
+
+            except NoSuchElementException:
+                dojang = 0
+                print(i, MyApp.members[i], dojang)
+                MyApp.dojangs.append(dojang)
 
     def initUI(self):
         grid = QGridLayout()
@@ -83,16 +126,26 @@ class MyApp(QWidget):
 
         grid.addWidget(self.tb,2,1)
 
-        self.setWindowTitle('QTextBrowser')
+        self.setWindowTitle('Maple_Guild_Spec_UI')
         self.setGeometry(500, 500, 500, 500)
         self.show()
 
     def append_text(self):
         self.Maple_Spec(self.le1.text(),self.le2.text())
 
-        #for i in range(MyApp.numberOfMembers):
+        for i in range(MyApp.numberOfMembers):
+            text = MyApp.members[i] +" "+str(MyApp.levels[i]) + " "+ MyApp.jobs[i]+" "+str(MyApp.dojangs[i])
+            self.tb.append(text)
 
-        # self.tb.append()
+        df = pd.DataFrame({
+            "member" : MyApp.members,
+            "level" : MyApp.levels,
+            "job" : MyApp.jobs,
+            "dojan" : MyApp.dojangs
+        })
+
+        df.to_excel(self.le1.text()+"_"+self.le2.text()+".xlsx",encoding="utf8")
+
         self.le1.clear()
         self.le2.clear()
 
@@ -103,5 +156,3 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = MyApp()
     sys.exit(app.exec_())
-
-# http://codetorial.net/pyqt5/widget/qtextbrowser.html
